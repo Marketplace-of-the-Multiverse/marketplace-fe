@@ -84,7 +84,7 @@ window.getUSDCBalance = async() => {
         method: 'GET',
         url: 'https://deep-index.moralis.io/api/v2/0x2438939dd447e6a223c14968bd6a18920b98dA5F/erc20',
         params: {chain: window.ethereum.chainId},
-        headers: {accept: 'application/json', 'X-API-Key': 'Uz4nx8socOf6C6o0qyZ4ELGUm0SKdzODYS6yrhmnRCmF9vKMObZ0Qfc9tyG2XhdX'}
+        headers: {accept: 'application/json', 'x-api-key': 'Uz4nx8socOf6C6o0qyZ4ELGUm0SKdzODYS6yrhmnRCmF9vKMObZ0Qfc9tyG2XhdX'}
     };
 
     let chainConfig = window.chainConfigs.filter(x => x.id == window.ethereum.networkVersion)[0];

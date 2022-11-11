@@ -183,7 +183,7 @@
         }
 
         let { data } = await axios.get(`https://api.onenft.shop/holderNfts/${window.ethereum.selectedAddress}`);
-        
+
         let imageUrls = [];
         data.forEach(d => {
           imageUrls.push(`${d.metadata.image}|${d.metadata.name}|${d.price / 1e6}|${d.tokenId}|${d.metadata.chain_id}|${d.currentlyListed? '1' : '0'}`);
@@ -323,16 +323,16 @@
             const contractName = await marketplaceContract.name();
             const nftNonce = await marketplaceContract.nonces(tokenId);
 
-            await marketplaceContract.approve(marketplaceContract.address, tokenId);
+            // await marketplaceContract.approve(marketplaceContract.address, tokenId);
 
             // gasless call
-            // const signature = await window.getSignature(contractName, fromChain.nftMarketplace, window.ethereum.selectedAddress, tokenId, fromChain.id, nftNonce, deadline);
+            const signature = await window.getSignature(contractName, fromChain.nftMarketplace, window.ethereum.selectedAddress, tokenId, fromChain.id, nftNonce, deadline);
             // console.log(`here ${signature}`);
 
             // gasless call
-            // const receipt = await getMarketplaceContract.setListTokenGasless(tokenId, window.ethers.utils.parseUnits(price.toString(), 6), deadline, signature);
+            const receipt = await marketplaceContract.setListTokenGasless(tokenId, window.ethers.utils.parseUnits(price.toString(), 6), deadline, signature);
 
-            const receipt = await marketplaceContract.setListToken(tokenId, window.ethers.utils.parseUnits(price.toString(), 6));
+            // const receipt = await marketplaceContract.setListToken(tokenId, window.ethers.utils.parseUnits(price.toString(), 6));
 
 
             /* console.log({
@@ -340,7 +340,8 @@
             });
             onSent(receipt.transactionHash); */
             console.log(receipt);
-            const txUrl = `${fromChain.blockExplorerUrl}/tx/${receipt.transactionHash}`;
+            const txHash = _.has(receipt, 'transactionHash') ? receipt.transactionHash : receipt.hash;
+            const txUrl = `${fromChain.blockExplorerUrl}/tx/${txHash}`;
 
             await window.saveActionLog(fromChain.id, tokenId, txUrl, 'listNft');
             window.showTxUrl(txUrl);
@@ -382,22 +383,12 @@
 
             //switch to target chain
             await window.requestSwitchChain(toChain);
-            console.log({toChainId, tokenId, price});
-            console.log("here")
             const destMarketplace = window.getMarketplaceContract(toChain);
-            console.log(destMarketplace)
             const destContract = window.getMessageReceiverContract(toChain);
-            console.log("here33")
             const contractName = await destMarketplace.name();
-            console.log("here44")
-            console.log({tokenId});
             const nftNonce = await destMarketplace.nonces(tokenId);
-            console.log(nftNonce);
-            console.log("here55")
 
             const signature = await window.getSignature(contractName, toChain.nftMarketplace, toChain.messageReceiver, tokenId, toChain.id, nftNonce, deadline);
-            console.log(signature);
-            console.log("here3")
 
             //switch back to current chain
             await window.requestSwitchChain(fromChain);
@@ -455,7 +446,8 @@
                 .then((tx) => tx.wait());
 
             console.log(receipt);
-            const txUrl = `${fromChain.blockExplorerUrl}/tx/${receipt.transactionHash}`;
+            const txHash = _.has(receipt, 'transactionHash') ? receipt.transactionHash : receipt.hash;
+            const txUrl = `${fromChain.blockExplorerUrl}/tx/${txHash}`;
 
             await window.saveActionLog(fromChain.id, tokenId, txUrl, 'delistNft');
             window.showTxUrl(txUrl);
@@ -552,7 +544,8 @@
                 )
                 .then((tx) => tx.wait());
 
-            const txUrl = `${fromChain.blockExplorerUrl}/tx/${receipt.transactionHash}`;
+            const txHash = _.has(receipt, 'transactionHash') ? receipt.transactionHash : receipt.hash;
+            const txUrl = `${fromChain.blockExplorerUrl}/tx/${txHash}`;
 
             await window.saveActionLog(fromChain.id, tokenId, txUrl, 'buyNft');
             window.showTxUrl(txUrl);
