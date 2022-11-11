@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>NFT Gallery</title>
+    <link rel="shortcut icon" href="TemplateData/favicon.ico">
+    <link rel="stylesheet" href="TemplateData/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.1.3/axios.min.js"
+        integrity="sha512-0qU9M9jfqPw6FKkPafM3gy2CBAvUWnYVOfNPDYKVuRTel1PrciTj+a9P3loJB+j0QmN2Y0JYQmkBBS8W+mbezg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style>
+        .swal2-input,
+        .swal2-textarea,
+        .swal2-file {
+            width: 75% !important;
+        }
+
+        .swal2-styled.swal2-confirm {
+            width: 200px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="unity-container" class="unity-desktop">
+        <canvas id="unity-canvas" tabindex="1" width=960 height=600></canvas>
+        <div id="unity-loading-bar">
+            <div id="unity-logo"></div>
+            <div id="unity-progress-bar-empty">
+                <div id="unity-progress-bar-full"></div>
+            </div>
+        </div>
+        <div id="unity-warning"> </div>
+        <div id="unity-footer">
+            <div id="unity-webgl-logo"></div>
+            <div id="unity-fullscreen-button"></div>
+            <div id="unity-build-title">NFT Gallery</div>
+        </div>
+    </div>
+    <script src="TemplateData/unityInteractor.js"></script>
+
+    <script src="https://code.jquery.com/jquery-3.6.1.min.js"
+        integrity="sha256-o88AwQnZB+VDvE9tvIXrMQaPlFFSUTR+nldQm1LuPXQ=" crossorigin="anonymous"></script>
+    <script>
+        const getBase64 = async (file) => {
+            return new Promise(function (resolve, reject) {
+                var reader = new FileReader();
+                reader.onload = function () { resolve(reader.result); };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        const uppercase = (text) => {
+            return text.toLowerCase()
+                .split(' ')
+                .map((s) => s.charAt(0).toUpperCase() + s.substring(1))
+                .join(' ');
+        }
+    </script>
+    <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
+
+    <script src="TemplateData/web3.js"></script>
+    <script src="TemplateData/ethConnectionHelper.js"></script>
+    <script type="module">
+        import { ethers, Contract } from "./TemplateData/ethers.js";
+        import { chainConfigs } from "./TemplateData/ChainConfigs.js";
+
+        window.hasWallet = false;
+        window.ethers = ethers;
+        window.chainConfigs = chainConfigs;
+        window.Contract = Contract;
+
+        window.sleep = (s) => {
+          return new Promise((resolve, reject) => {
+            setTimeout(() => {
+              resolve(true);
+            }, s * 1000);
+          })
+        }
+
+        window.connectMetamask = async () => {
+            if (!window.ethereum) {
+                return;
+            }
+
+            window.hasWallet = true;
+
+            // A Web3Provider wraps a standard Web3 provider, which is
+            // what MetaMask injects as window.ethereum into each page
+            const provider = new ethers.providers.Web3Provider(window.ethereum);
+            window.provider = provider;
+
+            if(window.ethereum.selectedAddress) {
+              //already has wallet
+              setTimeout(() => {
+                window.checkChainUnsupported(window.ethereum.chainId);
+                window.checkAddressConnection();
+                window.populateInventory();
+                window.getUSDCBalance();
+              }, 3000);
+              const signer = provider.getSigner();
+              window.signer = signer;
+            }
+
+            else {
+              // MetaMask requires requesting permission to connect users accounts
+              try {
+                await provider.send("eth_requestAccounts", []);
+
+                setTimeout(() => {
+                  window.checkChainUnsupported(window.ethereum.chainId);
+                  window.checkAddressConnection();
+                  window.populateInventory();
+                  window.getUSDCBalance();
+                }, 3000);
+
+                // The MetaMask plugin also allows signing transactions to
+                // send ether and pay to change state within the blockchain.
+                // For this, you need the account signer...
+                const signer = provider.getSigner();
+                window.signer = signer;
+              }
+
+              catch (e){
+                console.log(e);
+                window.interactor.execute("SetIndicatorDisconnected");
+              }
+
+            }
+        }
+    </script>
+    <script>
+        // get json
+        (async () => {
+            let res = await fetch('/TemplateData/ABI/IAxelarGateway.json');
+            window.IAxelarGateway = await res.json();
+            res = await fetch('/TemplateData/ABI/IERC20.json');
+            window.IERC20 = await res.json();
+            res = await fetch('/TemplateData/ABI/MessageReceiver.json');
+            window.MessageReceiver = await res.json();
+            res = await fetch('/TemplateData/ABI/MessageSender.json');
+            window.MessageSender = await res.json();
+            res = await fetch('/TemplateData/ABI/NFTMarketplace.json');
+            window.NFTMarketplace = await res.json();
+        })();
+
+        window.populateBuy = async() => {
+        let { data } = await axios.get('https://api.onenft.shop/gallery');
+
+        let imageUrls = [];
+        let prices = [];
+        data.forEach(d => {
+          imageUrls.push(`${d.metadata.image}|${d.metadata.name}|${d.price / 1e6}|${d.tokenId}|${d.metadata.chain_id}|${d.currentlyListed? '1' : '0'}`);
+        });
+
+        console.log(imageUrls.join(","));
+
+        window.interactor.execute("PopulateBuy", imageUrls.join(","));
+      }
+
+      window.populateGallery = async() => {
+        let { data } = await axios.get('https://api.onenft.shop/gallery');
+
+        let imageUrls = [];
+        let prices = [];
+        data.forEach(d => {
+          imageUrls.push(`${d.metadata.image}|${d.metadata.name}|${d.price / 1e6}|${d.tokenId}|${d.metadata.chain_id}|${d.currentlyListed? '1' : '0'}`);
+        });
+
+        console.log(imageUrls.join(","));
+
+        window.interactor.execute("PopulateGallery", imageUrls.join(","));
+      }
+
+      window.populateInventory = async() => {
+        if(!window.ethereum.selectedAddress) {
+          return;
+        }
+
+        let { data } = await axios.get(`https://api.onenft.shop/holderNfts/${window.ethereum.selectedAddress}`);
+        
+        let imageUrls = [];
+        data.forEach(d => {
+          imageUrls.push(`${d.metadata.image}|${d.metadata.name}|${d.price / 1e6}|${d.tokenId}|${d.metadata.chain_id}|${d.currentlyListed? '1' : '0'}`);
+        });
+        console.log(imageUrls.join(","));
+
+        window.interactor.execute("PopulateInventory", imageUrls.join(","));
+      }
+
+        window.hexlify = (chainId) => {
+            return ethers.utils.hexlify(chainId).replace("0x0", "0x");
+        }
+
+        window.getGatewayContract = (chain) => {
+            return new window.Contract(chain.gateway, window.IAxelarGateway.abi, window.provider.getSigner());
+        }
+
+        window.getMessageSenderContract = (chain) => {
+            return new window.Contract(chain.messageSender, window.MessageSender.abi, window.provider.getSigner());
+        }
+
+        window.getMessageReceiverContract = (chain) => {
+            return new window.Contract(chain.messageReceiver, window.MessageReceiver.abi, window.provider.getSigner());
+        }
+
+        window.getMarketplaceContract = (chain) => {
+            return new window.Contract(chain.nftMarketplace, window.NFTMarketplace.abi, window.provider.getSigner());
+        }
+
+        window.getSignature = async (
+            contractName,
+            verifyingContract,
+            spender,
+            tokenId,
+            chainId,
+            nonce,
+            deadline
+        ) => {
+
+            const typedData = {
+                types: {
+                    Permit: [
+                        { name: "spender", type: "address" },
+                        { name: "tokenId", type: "uint256" },
+                        { name: "nonce", type: "uint256" },
+                        { name: "deadline", type: "uint256" },
+                    ],
+                },
+                primaryType: "Permit",
+                domain: {
+                    name: contractName,
+                    version: "1",
+                    chainId: chainId,
+                    verifyingContract: verifyingContract,
+                },
+                message: {
+                    spender,
+                    tokenId,
+                    nonce,
+                    deadline
+                },
+            };
+
+            // sign Permit
+            // get new signer
+            const signer = window.provider.getSigner();
+            const signature = await signer._signTypedData(
+                typedData.domain,
+                { Permit: typedData.types.Permit },
+                typedData.message
+            );
+
+            return signature;
+        }
+
+        window.showTxUrl = (url) => {
+            Swal.fire({
+                title: 'Done!',
+                showConfirmButton: true,
+                allowOutsideClick: false,
+                html: `<a target="_blank" href="${url}">${url}</a>`
+            });
+        }
+
+        window.saveActionLog = async(toChain, tokenId, tx, action) => {
+            let data = JSON.stringify({
+                "toChain": toChain,
+                "fromChain": window.ethereum.networkVersion,
+                "tokenId": tokenId,
+                "address": window.ethereum.selectedAddress,
+                "tx": tx
+            });
+
+            // action = listNft | delistNft | buyNft
+            let config = {
+                method: 'post',
+                url: `https://api.onenft.shop/${action}`,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                data : data
+            };
+
+            axios(config)
+            .then(function (response) {
+                console.log(JSON.stringify(response.data));
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+        }
+
+        // list nft from same chain
+        window.callList = async (tokenId, price) => {
+            if (!window.ethereum.selectedAddress) {
+                alert('Not connected');
+                return;
+            }
+
+            if (!window.ethereum.networkVersion) {
+                alert('Not connected');
+                return;
+            }
+
+            const fromChain = _.find(window.chainConfigs, {id: Number(window.ethereum.networkVersion)});
+
+            if (!fromChain) {
+                alert('Chain not supported');
+                return;
+            }
+
+            // hard code to one day from now
+            const deadline = Math.round(Date.now() / 1000 + (7 * 24 * 60 * 60));
+
+            //switch to target chain
+            const marketplaceContract = window.getMarketplaceContract(fromChain);
+            const contractName = await marketplaceContract.name();
+            const nftNonce = await marketplaceContract.nonces(tokenId);
+
+            await marketplaceContract.approve(marketplaceContract.address, tokenId);
+
+            // gasless call
+            // const signature = await window.getSignature(contractName, fromChain.nftMarketplace, window.ethereum.selectedAddress, tokenId, fromChain.id, nftNonce, deadline);
+            // console.log(`here ${signature}`);
+
+            // gasless call
+            // const receipt = await getMarketplaceContract.setListTokenGasless(tokenId, window.ethers.utils.parseUnits(price.toString(), 6), deadline, signature);
+
+            const receipt = await marketplaceContract.setListToken(tokenId, window.ethers.utils.parseUnits(price.toString(), 6));
+
+
+            /* console.log({
+              txHash: receipt.transactionHash,
+            });
+            onSent(receipt.transactionHash); */
+            console.log(receipt);
+            const txUrl = `${fromChain.blockExplorerUrl}/tx/${receipt.transactionHash}`;
+
+            await window.saveActionLog(fromChain.id, tokenId, txUrl, 'listNft');
+            window.showTxUrl(txUrl);
+        }
+
+        // list nft from another chain
+        window.crossChainList = async (toChainId, tokenId, price) => {
+            if (!window.ethereum.selectedAddress) {
+                alert('Not connected');
+                return;
+            }
+
+            if (!window.ethereum.networkVersion) {
+                alert('Not connected');
+                return;
+            }
+
+            const fromChain = _.find(window.chainConfigs, {id: Number(window.ethereum.networkVersion)});
+            const toChain = _.find(window.chainConfigs, {id: Number(toChainId)});
+
+            if (!fromChain) {
+                alert('Chain not supported');
+                return;
+            }
+
+            if (!toChain) {
+                alert('Destination chain not supported');
+                return;
+            }
+
+            let { data: gasFee } = await axios.get(`https://api.onenft.shop/estimateGas/${fromChain.id}/${toChain.id}`);
+
+            // hard code to one day from now
+            const deadline = Math.round(Date.now() / 1000 + (7 * 24 * 60 * 60));
+
+            // // get chain configs
+            // const currentChainConfig = window.getChainConfig(window.ethereum.networkVersion);
+            // const destChainConfig = window.getChainConfig(destinationChainHexId);
+
+            //switch to target chain
+            await window.requestSwitchChain(toChain);
+            console.log({toChainId, tokenId, price});
+            console.log("here")
+            const destMarketplace = window.getMarketplaceContract(toChain);
+            console.log(destMarketplace)
+            const destContract = window.getMessageReceiverContract(toChain);
+            console.log("here33")
+            const contractName = await destMarketplace.name();
+            console.log("here44")
+            console.log({tokenId});
+            const nftNonce = await destMarketplace.nonces(tokenId);
+            console.log(nftNonce);
+            console.log("here55")
+
+            const signature = await window.getSignature(contractName, toChain.nftMarketplace, toChain.messageReceiver, tokenId, toChain.id, nftNonce, deadline);
+            console.log(signature);
+            console.log("here3")
+
+            //switch back to current chain
+            await window.requestSwitchChain(fromChain);
+            const sourceContract = window.getMessageSenderContract(fromChain);
+
+            const receipt = await sourceContract
+                .crossChainList(
+                    toChain.name,
+                    destContract.address,
+                    tokenId,
+                    window.ethers.utils.parseUnits(price.toString(), 6),
+                    deadline,
+                    signature,
+                    {
+                        value: BigInt(gasFee)
+                    },
+                )
+                .then((tx) => tx.wait());
+
+            /* console.log({
+              txHash: receipt.transactionHash,
+            });
+            onSent(receipt.transactionHash); */
+            const txUrl  = `https://testnet.axelarscan.io/gmp/${receipt.transactionHash}`;
+
+            await window.saveActionLog(toChain.id, tokenId, txUrl, 'listNft');
+            window.showTxUrl(txUrl);
+        }
+
+        // cross chain delist
+        window.callDelist = async (tokenId) => {
+            if (!window.ethereum.selectedAddress) {
+                alert('Not connected');
+                return;
+            }
+
+            if (!window.ethereum.networkVersion) {
+                alert('Not connected');
+                return;
+            }
+
+            let fromChain = _.find(window.chainConfigs, {id: Number(window.ethereum.networkVersion)});
+
+            if (!fromChain) {
+                alert('Chain not supported');
+                return;
+            }
+
+            const marketplaceContract = window.getMarketplaceContract(fromChain);
+
+            const receipt = await marketplaceContract
+                .delistToken(
+                    tokenId
+                )
+                .then((tx) => tx.wait());
+
+            console.log(receipt);
+            const txUrl = `${fromChain.blockExplorerUrl}/tx/${receipt.transactionHash}`;
+
+            await window.saveActionLog(fromChain.id, tokenId, txUrl, 'delistNft');
+            window.showTxUrl(txUrl);
+        }
+
+        // cross chain delist
+        window.crossChainDelist = async (toChainId, tokenId) => {
+            if (!window.ethereum.selectedAddress) {
+                alert('Not connected');
+                return;
+            }
+
+            if (!window.ethereum.networkVersion) {
+                alert('Not connected');
+                return;
+            }
+
+            const fromChain = _.find(window.chainConfigs, {id: Number(window.ethereum.networkVersion)});
+            const toChain = _.find(window.chainConfigs, {id: Number(toChainId)});
+
+            if (!fromChain) {
+                alert('Chain not supported');
+                return;
+            }
+
+            if (!toChain) {
+                alert('Destination chain not supported');
+                return;
+            }
+
+            let { data: gasFee } = await axios.get(`https://api.onenft.shop/estimateGas/${fromChain.id}/${toChain.id}`);
+
+            const sourceContract = window.getMessageSenderContract(fromChain);
+            const destContract = window.getMessageReceiverContract(toChain);
+
+            const receipt = await sourceContract
+                .crossChainDelist(
+                    toChain.name,
+                    destContract.address,
+                    tokenId,
+                    {
+                        value: BigInt(gasFee)
+                    },
+                )
+                .then((tx) => tx.wait());
+
+            const txUrl  = `https://testnet.axelarscan.io/gmp/${receipt.transactionHash}`;
+
+            await window.saveActionLog(toChain.id, tokenId, txUrl, 'delistNft');
+            window.showTxUrl(txUrl);
+        }
+
+        window.callBuy = async (
+            amount,
+            tokenId
+        ) => {
+            console.log({amount, tokenId})
+            if (!window.ethereum.selectedAddress) {
+                alert('Not connected');
+                return;
+            }
+
+            if (!window.ethereum.networkVersion) {
+                alert('Not connected');
+                return;
+            }
+
+            let fromChain = _.find(window.chainConfigs, {id: Number(window.ethereum.networkVersion)});
+
+            if (!fromChain) {
+                alert('Chain not supported');
+                return;
+            }
+
+            const marketplaceContract = window.getMarketplaceContract(fromChain);
+
+            // Get token address from the gateway contract
+            const tokenAddress = await marketplaceContract.getReceivingToken();
+
+            const erc20 = new Contract(
+                tokenAddress,
+                window.IERC20.abi,
+                window.provider.getSigner(),
+            );
+
+            // Approve the token for the amount to be sent
+            await erc20
+                .approve(marketplaceContract.address, window.ethers.utils.parseUnits(amount, 6))
+                .then((tx) => tx.wait());
+
+            const receipt = await marketplaceContract
+                .executeSale(
+                    tokenId
+                )
+                .then((tx) => tx.wait());
+
+            const txUrl = `${fromChain.blockExplorerUrl}/tx/${receipt.transactionHash}`;
+
+            await window.saveActionLog(fromChain.id, tokenId, txUrl, 'buyNft');
+            window.showTxUrl(txUrl);
+        }
+
+        window.crossChainBuy = async (
+            toChainId,
+            amount,
+            tokenId
+        ) => {
+            if (!window.ethereum.selectedAddress) {
+                alert('Not connected');
+                return;
+            }
+
+            if (!window.ethereum.networkVersion) {
+                alert('Not connected');
+                return;
+            }
+
+            const fromChain = _.find(window.chainConfigs, {id: Number(window.ethereum.networkVersion)});
+            const toChain = _.find(window.chainConfigs, {id: Number(toChainId)});
+
+            if (!fromChain) {
+                alert('Chain not supported');
+                return;
+            }
+
+            if (!toChain) {
+                alert('Destination chain not supported');
+                return;
+            }
+
+            let { data: gasFee } = await axios.get(`https://api.onenft.shop/estimateGas/${fromChain.id}/${toChain.id}`);
+
+            const srcGatewayContract = window.getGatewayContract(fromChain);
+            const sourceContract = window.getMessageSenderContract(fromChain);
+            const destContract = window.getMessageReceiverContract(toChain);
+
+            // Get token address from the gateway contract
+            const tokenAddress = await srcGatewayContract.tokenAddresses("aUSDC");
+
+
+            const erc20 = new Contract(
+                tokenAddress,
+                window.IERC20.abi,
+                window.provider.getSigner(),
+            );
+
+            // Approve the token for the amount to be sent
+            await erc20
+                .approve(sourceContract.address, window.ethers.utils.parseUnits(amount, 6))
+                .then((tx) => tx.wait());
+
+            const receipt = await sourceContract
+                .crossChainBuy(
+                    toChain.name,
+                    destContract.address,
+                    "aUSDC",
+                    window.ethers.utils.parseUnits(amount, 6),
+                    tokenId,
+                    {
+                        value: BigInt(gasFee)
+                    },
+                )
+                .then((tx) => tx.wait());
+
+            /* console.log({
+              txHash: receipt.transactionHash,
+            });
+            onSent(receipt.transactionHash); */
+
+            const txUrl  = `https://testnet.axelarscan.io/gmp/${receipt.transactionHash}`;
+
+            await window.saveActionLog(toChain.id, tokenId, txUrl, 'buyNft');
+            window.showTxUrl(txUrl);
+        }
+    </script>
+    <script>
+        var container = document.querySelector("#unity-container");
+        var canvas = document.querySelector("#unity-canvas");
+        var loadingBar = document.querySelector("#unity-loading-bar");
+        var progressBarFull = document.querySelector("#unity-progress-bar-full");
+        var fullscreenButton = document.querySelector("#unity-fullscreen-button");
+        var warningBanner = document.querySelector("#unity-warning");
+
+        // Shows a temporary message banner/ribbon for a few seconds, or
+        // a permanent error message on top of the canvas if type=='error'.
+        // If type=='warning', a yellow highlight color is used.
+        // Modify or remove this function to customize the visually presented
+        // way that non-critical warnings and error messages are presented to the
+        // user.
+        function unityShowBanner(msg, type) {
+            function updateBannerVisibility() {
+                warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
+            }
+            var div = document.createElement('div');
+            div.innerHTML = msg;
+            warningBanner.appendChild(div);
+            if (type == 'error') div.style = 'background: red; padding: 10px;';
+            else {
+                if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
+                setTimeout(function () {
+                    warningBanner.removeChild(div);
+                    updateBannerVisibility();
+                }, 5000);
+            }
+            updateBannerVisibility();
+        }
+
+        var buildUrl = "Build";
+        var loaderUrl = buildUrl + "/Builds.loader.js";
+        var config = {
+            dataUrl: buildUrl + "/Builds.data.gz",
+            frameworkUrl: buildUrl + "/Builds.framework.js.gz",
+            codeUrl: buildUrl + "/Builds.wasm.gz",
+            streamingAssetsUrl: "StreamingAssets",
+            companyName: "DefaultCompany",
+            productName: "NFT Gallery",
+            productVersion: "0.1",
+            showBanner: unityShowBanner,
+        };
+
+        // By default Unity keeps WebGL canvas render target size matched with
+        // the DOM size of the canvas element (scaled by window.devicePixelRatio)
+        // Set this to false if you want to decouple this synchronization from
+        // happening inside the engine, and you would instead like to size up
+        // the canvas DOM size and WebGL render target sizes yourself.
+        // config.matchWebGLToCanvasSize = false;
+
+        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+            // Mobile device style: fill the whole browser client area with the game canvas:
+
+            var meta = document.createElement('meta');
+            meta.name = 'viewport';
+            meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
+            document.getElementsByTagName('head')[0].appendChild(meta);
+            container.className = "unity-mobile";
+            canvas.className = "unity-mobile";
+
+            // To lower canvas resolution on mobile devices to gain some
+            // performance, uncomment the following line:
+            // config.devicePixelRatio = 1;
+
+            unityShowBanner('WebGL builds are not supported on mobile devices.');
+        } else {
+            // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:
+
+            canvas.style.width = "960px";
+            canvas.style.height = "600px";
+        }
+
+        loadingBar.style.display = "block";
+
+        var script = document.createElement("script");
+        script.src = loaderUrl;
+
+        var hasLoaded = false;
+        script.onload = () => {
+          createUnityInstance(canvas, config, (progress) => {
+            progressBarFull.style.width = 100 * progress + "%";
+          }).then(async(unityInstance) => {
+            $('#unity-canvas').focus();
+            loadingBar.style.display = "none";
+            fullscreenButton.onclick = () => {
+              unityInstance.SetFullscreen(1);
+            };
+
+            newInteractor(unityInstance);
+            if(window.ethereum) {
+              setTimeout(() => {
+                window.checkChainUnsupported(window.ethereum.chainId);
+                window.checkAddressConnection();
+              }, 3000);
+            }
+
+            await window.populateGallery();
+            await window.populateBuy();
+            await window.connectMetamask();
+          }).catch((message) => {
+            alert(message);
+          });
+        };
+        document.body.appendChild(script);
+    </script>
+</body>
+
+</html>

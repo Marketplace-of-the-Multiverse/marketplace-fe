@@ -1,0 +1,92 @@
+[
+  {
+    "name": "Moonbeam",
+    "chainId": 1287,
+    "gateway": "0x5769D84DD62a6fD969856c75c7D321b84d455929",
+    "rpc": "https://moonbase-alpha.public.blastapi.io",
+    "gasReceiver": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
+    "tokenName": "DEV",
+    "tokenSymbol": "DEV",
+    "executableSample": "0x2120A291a99746726CFa3bCcd3C388da75f7e718",
+    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
+    "crossChainToken": "0xD1633F7Fb3d716643125d6415d4177bC36b7186b",
+    "tokens": {
+      "aUSDC": "aUSDC"
+    },
+    "messageSender": "0x5611aE4B377D1A9a0933743cb0Ec8b3b6fD95B50",
+    "messageReceiver": "0xfe4dBE7b4C41079BBD8ad52A238Bd695acF9848d",
+    "nftMarketplace": "0xb00f1E3188959531Ce0B1955A7719119d49AECA3"
+  },
+  {
+    "name": "Avalanche",
+    "chainId": 43113,
+    "rpc": "https://avalanchetestapi.terminet.io/ext/bc/C/rpc",
+    "gateway": "0xC249632c2D40b9001FE907806902f63038B737Ab",
+    "gasReceiver": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
+    "tokenName": "Avax",
+    "tokenSymbol": "AVAX",
+    "executableSample": "0x9372350Abb3B5c10DB1BB858e0bCf91eFa74d946",
+    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
+    "crossChainToken": "0x57F1c63497AEe0bE305B8852b354CEc793da43bB",
+    "tokens": {
+      "aUSDC": "aUSDC"
+    },
+    "messageSender": "0xbC34FC51951FC38eC9Bad81a93EA1F53BF34d035",
+    "messageReceiver": "0x447214f0DEbFf551a7553961585c7493BE657f87",
+    "nftMarketplace": "0x7E1D1c1EA091B81B1b572aB56B40843B760cD9eD"
+  },
+  {
+    "name": "BscTest",
+    "chainId": 97,
+    "gateway": "0x4D147dCb984e6affEEC47e44293DA442580A3Ec0",
+    "rpc": "https://data-seed-prebsc-1-s3.binance.org:8545",
+    "gasReceiver": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
+    "tokenName": "BNB",
+    "tokenSymbol": "BNB",
+    "executableSample": "0x9372350Abb3B5c10DB1BB858e0bCf91eFa74d946",
+    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
+    "crossChainToken": "0xc2fA98faB811B785b81c64Ac875b31CC9E40F9D2",
+    "tokens": {
+      "aUSDC": "aUSDC"
+    },
+    "messageSender": "0xa3da6738aE8a948CBe3096ac37b0cb4c17103a75",
+    "messageReceiver": "0xFe3e0CD741a663e1cb140680142b94d1fCF0066F",
+    "nftMarketplace": "0x8dD6097470d671C69d48AFc946495d699787608a"
+  },
+  {
+    "name": "Mumbai",
+    "chainId": 80001,
+    "rpc": "https://polygon-testnet.public.blastapi.io",
+    "gateway": "0xBF62ef1486468a6bd26Dd669C06db43dEd5B849B",
+    "gasReceiver": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
+    "tokenName": "MATIC",
+    "tokenSymbol": "MATIC",
+    "executableSample": "0x9372350Abb3B5c10DB1BB858e0bCf91eFa74d946",
+    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
+    "crossChainToken": "0x2c852e740B62308c46DD29B982FBb650D063Bd07",
+    "tokens": {
+      "aUSDC": "aUSDC"
+    },
+    "messageSender": "0x57A25f4C779fFE289cc858F9ca2d3A240622EC19",
+    "messageReceiver": "0x8235E54719E8b0b825a1d15F5df06135fB0a8885",
+    "nftMarketplace": "0xC52349D185455caDAa02bEF9Fc165A2234017cff"
+  },
+  {
+    "name": "Fantom",
+    "chainId": 4002,
+    "rpc": "https://rpc.ankr.com/fantom_testnet",
+    "gateway": "0x97837985Ec0494E7b9C71f5D3f9250188477ae14",
+    "gasReceiver": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
+    "tokenName": "FTM",
+    "tokenSymbol": "FTM",
+    "executableSample": "0x9372350Abb3B5c10DB1BB858e0bCf91eFa74d946",
+    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
+    "crossChainToken": "0x75Cc4fDf1ee3E781C1A3Ee9151D5c6Ce34Cf5C61",
+    "tokens": {
+      "aUSDC": "aUSDC"
+    },
+    "messageSender": "0x18012f62c4393900c5F70821839a2fD0e0270781",
+    "messageReceiver": "0xceb2f6E3fC0c771f56C4d2Bc96DA18b10a9474fD",
+    "nftMarketplace": "0x80Aea4BCD7c28FBc20624FD154494aE9717aaBc3"
+  }
+]
